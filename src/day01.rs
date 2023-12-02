@@ -36,22 +36,22 @@ pub fn run(content: &str) {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn small() {
-      assert_eq!(super::get_num("1abc2"), 12);
-      assert_eq!(super::get_num("pqr3stu8vwx"), 38);
-      assert_eq!(super::get_num("a1b2c3d4e5f"), 15);
-      assert_eq!(super::get_num("treb7uchet"), 77);
-    }
+  #[test]
+  fn small() {
+    assert_eq!(super::get_num("1abc2"), 12);
+    assert_eq!(super::get_num("pqr3stu8vwx"), 38);
+    assert_eq!(super::get_num("a1b2c3d4e5f"), 15);
+    assert_eq!(super::get_num("treb7uchet"), 77);
+  }
 
-    #[test]
-    fn large() {
-      assert_eq!(super::get_str("two1nine"), 29);
-      assert_eq!(super::get_str("eightwothree"), 83);
-      assert_eq!(super::get_str("abcone2threexyz"), 13);
-      assert_eq!(super::get_str("xtwone3four"), 24);
-      assert_eq!(super::get_str("4nineeightseven2"), 42);
-      assert_eq!(super::get_str("zoneight234"), 14);
-      assert_eq!(super::get_str("7pqrstsixteen"), 76);
-    }
+  #[test]
+  fn large() {
+    assert_eq!(super::get_str("two1nine"), 29);
+    assert_eq!(super::get_str("eightwothree"), 83);
+    assert_eq!(super::get_str("abcone2threexyz"), 13);
+    assert_eq!(super::get_str("xtwone3four"), 24);
+    assert_eq!(super::get_str("4nineeightseven2"), 42);
+    assert_eq!(super::get_str("zoneight234"), 14);
+    assert_eq!(super::get_str("7pqrstsixteen"), 76);
+  }
 }
