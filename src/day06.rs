@@ -46,16 +46,16 @@ mod tests {
     Time:      7  15   30\n\
     Distance:  9  40  200";
 
-    #[test]
-    fn small() {
-      let races = super::Race::parse(TEST);
-      let winning: Vec<u64> = races.iter().map(|x| x.count_winning()).collect();
-      assert_eq!(winning, [4, 8, 9]);
-    }
-
-    #[test]
-    fn large() {
-      let race = super::Race::parse_one(TEST);
-      assert_eq!(race.count_winning(), 71503);
-    }
+  #[test]
+  fn small() {
+    let races = super::Race::parse(TEST);
+    let winning: Vec<u64> = races.iter().map(|x| x.count_winning()).collect();
+    assert_eq!(winning, [4, 8, 9]);
   }
+
+  #[test]
+  fn large() {
+    let race = super::Race::parse_one(TEST);
+    assert_eq!(race.count_winning(), 71503);
+  }
+}
