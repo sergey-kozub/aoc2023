@@ -15,8 +15,8 @@ struct Spring {
 }
 
 #[derive(Default)]
-struct Scatter {
-  cache: HashMap<(usize, usize), usize>,
+struct Solution {
+  cache: HashMap<(usize, usize, bool), usize>,
 }
 
 impl Spring {
@@ -44,70 +44,38 @@ impl Spring {
   }
 
   fn arrangements(&self) -> usize {
-    let mut scatter = Scatter::default();
-    descend(&self.cells[..], &self.groups[..], false, &mut scatter)
+    let mut solution = Solution::default();
+    solution.descend(&self.cells[..], &self.groups[..], false)
   }
 }
 
-impl Scatter {
-  fn count(&mut self, n: usize, m: usize) -> usize {
-    if n == 0 || m == 1 { return 1; }
-    if let Some(res) = self.cache.get(&(n, m)) { return *res; }
-    let res = (0..=n).map(|t| self.count(n - t, m - 1)).sum();
-    self.cache.insert((n, m), res);
+impl Solution {
+  fn descend(&mut self, cells: &[Cell], groups: &[usize],
+             restrict: bool) -> usize {
+    let some_is = |a: &[Cell], x: Cell| a.iter().any(|&c| c == x);
+    if groups.is_empty() { return !some_is(cells, Cell::Damaged) as usize; }
+    let next = groups[0];
+    if next > cells.len() { return 0; }
+
+    let key = (cells.len(), groups.len(), restrict);
+    if let Some(res) = self.cache.get(&key) { return *res; }
+    let mut res = 0_usize;
+    if !matches!(cells[0], Cell::Damaged) {
+      res += self.descend(&cells[1..], groups, false);
+    }
+    if !matches!(cells[0], Cell::Operational) && !restrict &&
+       !some_is(&cells[..next], Cell::Operational) {
+      res += self.descend(&cells[next..], &groups[1..], true);
+    }
+    self.cache.insert(key, res);
     res
-  }
-}
-
-fn descend(cells: &[Cell], groups: &[usize],
-           restrict: bool, scatter: &mut Scatter) -> usize {
-  let some_is = |a: &[Cell], x: Cell| a.iter().any(|&c| c == x);
-  if groups.is_empty() { return !some_is(cells, Cell::Damaged) as usize; }
-  let next = groups[0];
-  if next > cells.len() { return 0; }
-  let size = cells.iter().take_while(|&&c| c == cells[0]).count();
-
-  match cells[0] {
-    Cell::Operational => descend(&cells[size..], groups, false, scatter),
-    Cell::Damaged => {
-      if restrict || size > next ||
-         some_is(&cells[size..next], Cell::Operational) {0}
-      else {descend(&cells[next..], &groups[1..], true, scatter)}
-    },
-    Cell::Unknown => {
-      let mut count = descend(&cells[size..], groups, false, scatter);
-      let mut available = size - restrict as usize;
-      for fit in 1..=groups.len() {
-        let last = groups[fit - 1];
-        for tail in 1..=last {
-          if tail > available { break; }
-          let end = size + last - tail;
-          if end > cells.len() { continue; }
-          if !some_is(&cells[size..end], Cell::Operational) {
-            let m = descend(&cells[end..], &groups[fit..], true, scatter);
-            count += m * scatter.count(available - tail, fit);
-          }
-        }
-        if last + 1 > available { break; }
-        available -= last + 1;
-        let m = descend(&cells[size..], &groups[fit..], false, scatter);
-        for gaps in 0..=available {
-          count += m * scatter.count(gaps, fit);
-        }
-      }
-      count
-    },
   }
 }
 
 pub fn run(content: &str) {
   let springs: Vec<Spring> = content.lines().map(Spring::parse).collect();
   let unfolded: Vec<Spring> = springs.iter().map(|x| x.unfold(5)).collect();
-  let count = |x: &[Spring]| x.iter().enumerate().map(|(k, v)| {
-    let res = v.arrangements();
-    println!("{k} {res}");
-    res
-  }).sum::<usize>();
+  let count = |x: &[Spring]| x.iter().map(|v| v.arrangements()).sum::<usize>();
   println!("{} {}", count(&springs), count(&unfolded));
 }
 
