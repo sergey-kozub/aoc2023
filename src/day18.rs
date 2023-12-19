@@ -103,8 +103,8 @@ impl Field {
         let a = &nodes[m..];
         if a[1].dir != a[3].dir { break; }
 
-        let sign = if a[0].dir == a[2].dir {1} else {-1};
-        let n1 = a[0].len + a[2].len * sign;
+        let same = a[0].dir == a[2].dir;
+        let n1 = a[0].len + a[2].len * (if same {1} else {-1});
         let d1 = if n1 > 0 {a[0].dir} else {a[2].dir};
         let t1 = Trench { pos: a[0].pos, dir: d1, len: n1.abs() };
         let n2 = a[1].len + a[3].len;
@@ -118,19 +118,23 @@ impl Field {
           break;
         }
 
-        let c = if sign < 0 {1} else {0};
-        result -= (sign * a[2].len) as i64 * (a[1].len + c) as i64;
+        let (d1, d2) = (a[1].dir.delta(), a[2].dir.delta());
+        let sign = (if d1.0 != 0 {d1.0 * d2.1} else {-d1.1 * d2.0}) as i64;
+        let (w, h) = (a[1].len as i64, a[2].len as i64);
+        result += if !same {
+          sign * (w + sign) * h - (if n1 < 0 {t1.len as i64} else {0})
+        } else {
+          sign * w * h
+        };
         nodes.truncate(m);
         nodes.extend([t1, t2]);
-
-//        let mut b = nodes.clone();
-//        for t in &self.dig[idx+1..] { b.push(t.clone()); }
-//        println!("{:?}", Field { dig: b });
       }
     }
-    assert_eq!(nodes.len(), 4);
-    result += (nodes[0].len + 1) as i64 * (nodes[1].len + 1) as i64;
-    result
+    let count = |d: Direction| nodes.iter().filter(|t| t.dir == d)
+      .map(|t| t.len as i64).sum::<i64>();
+    let width = count(Direction::Left) + 1;
+    let height = count(Direction::Up) + 1;
+    width * height + result
   }
 }
 
@@ -163,8 +167,9 @@ fn get_bounds(data: &HashSet<Point>) -> (Range<i32>, Range<i32>) {
 }
 
 pub fn run(content: &str) {
-  let test = Field::parse(content, false);
-  println!("{}", test.simple());
+  let res1 = Field::parse(content, false).simple();
+  let res2 = Field::parse(content, true).fold();
+  println!("{} {}", res1, res2);
 }
 
 #[cfg(test)]
@@ -189,5 +194,12 @@ U 2 (#7a21e3)";
   fn small() {
     let test = super::Field::parse(TEST, false);
     assert_eq!(test.simple(), 62);
+    assert_eq!(test.fold(), 62);
+  }
+
+  #[test]
+  fn large() {
+    let test = super::Field::parse(TEST, true);
+    assert_eq!(test.fold(), 952408144115);
   }
 }
