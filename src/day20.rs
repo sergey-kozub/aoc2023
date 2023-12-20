@@ -1,7 +1,6 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 const START: &str = "broadcaster";
-const STOP: &str = "rx";
 
 #[derive(Clone, Copy, Debug)]
 enum Pulse {
@@ -9,26 +8,23 @@ enum Pulse {
   High,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum Module {
   Broadcaster,
   FlipFlop(Pulse),
   Conjunction(HashMap<String, Pulse>),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Node {
   name: String,
   module: Module,
   target: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Relay {
   nodes: HashMap<String, Node>,
-  low: usize,
-  high: usize,
-  done: bool,
 }
 
 impl Pulse {
@@ -93,16 +89,17 @@ impl Relay {
       }
     }
     assert!(nodes.contains_key(START));
-    Relay { nodes, low: 0, high: 0, done: false }
+    Relay { nodes }
   }
 
-  fn press(&mut self) {
-    let init = (String::new(), String::from(START), Pulse::Low);
+  fn press(&mut self, start: &str) -> (usize, usize) {
+    let init = (String::new(), String::from(start), Pulse::Low);
     let mut queue = VecDeque::from([init]);
+    let (mut low, mut high) = (0_usize, 0_usize);
     while let Some((from, to, signal)) = queue.pop_front() {
       match signal {
-        Pulse::Low => self.low += 1,
-        Pulse::High => self.high += 1,
+        Pulse::Low => low += 1,
+        Pulse::High => high += 1,
       };
       if let Some(node) = self.nodes.get_mut(&to) {
         if let Some(next) = node.module.process(signal, &from) {
@@ -110,31 +107,42 @@ impl Relay {
             .map(|v| (to.clone(), v.clone(), next)));
         }
       }
-      if to == STOP && matches!(signal, Pulse::Low) {
-        self.done = true;
-      }
     }
+    (low, high)
   }
 
   fn repeat(&mut self, count: usize) -> usize {
-    for _ in 0..count { self.press(); }
-    self.low * self.high
+    let (low, high) = (0..count).fold((0_usize, 0_usize), |acc, _| {
+      let cur = self.press(START);
+      (acc.0 + cur.0, acc.1 + cur.1)
+    });
+    low * high
   }
 
-  fn wait_done(&mut self) -> usize {
-    let mut count = 0_usize;
-    while !self.done {
-      self.press();
-      count += 1;
-    }
-    count
+  fn state(&self) -> String {
+    self.nodes.values().filter_map(|x| match x.module {
+      Module::FlipFlop(v) => Some(if matches!(v, Pulse::High) {'1'} else {'0'}),
+      _ => None,
+    }).collect()
+  }
+
+  fn count_disjoint(&self) -> usize {
+    let init = self.nodes.get(START).unwrap();
+    init.target.iter().map(|start| {
+      let mut partial = self.clone();
+      let mut visited = HashSet::<String>::new();
+      while visited.insert(partial.state()) {
+        partial.press(start);
+      }
+      visited.len()
+    }).product()
   }
 }
 
 pub fn run(content: &str) {
-  let mut relay = Relay::parse(content);
-  let res1 = relay.repeat(1000);
-  let res2 = relay.wait_done() + 1000;
+  let relay = Relay::parse(content);
+  let res1 = relay.clone().repeat(1000);
+  let res2 = relay.count_disjoint();
   println!("{} {}", res1, res2);
 }
 
