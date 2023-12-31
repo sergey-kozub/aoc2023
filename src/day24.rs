@@ -37,6 +37,21 @@ impl Particle {
       !is_past(&x, part.position.0, part.velocity.0)
     }).count()
   }
+
+  fn get_at(&self, t: i64) -> Point {
+    (self.position.0 + t * self.velocity.0,
+     self.position.1 + t * self.velocity.1,
+     self.position.2 + t * self.velocity.2)
+  }
+
+  fn get_pair(&self, i: usize) -> (i64, i64) {
+    match i {
+      0 => (self.position.0, self.velocity.0),
+      1 => (self.position.1, self.velocity.1),
+      2 => (self.position.2, self.velocity.2),
+      _ => panic!(),
+    }
+  }
 }
 
 impl Line2D {
@@ -68,12 +83,42 @@ fn is_past(frac: &Fraction, pos: i64, inc: i64) -> bool {
   if a != b {(a > b) == (inc < 0)} else {false}
 }
 
+fn solve(data: &[Particle], (u0, v0, _): Point) -> Option<Point> {
+  let ((x1, u1), (y1, v1)) = (data[0].get_pair(0), data[0].get_pair(1));
+  let ((x2, u2), (y2, v2)) = (data[1].get_pair(0), data[1].get_pair(1));
+  let a = (y2 - y1) * (u2 - u0) + (x1 - x2) * (v2 - v0);
+  let b = (v1 - v0) * (u2 - u0) - (u1 - u0) * (v2 - v0);
+  if b == 0 { return None; }
+  let t1 = a / b;
+  let (sx, sy) = (x1 + t1 * (u1 - u0), y1 + t1 * (v1 - v0));
+  let mut z: Vec<(i64, i64)> = vec![];
+  if !data.iter().all(|part| {
+    let (x, u) = part.get_pair(0);
+    if u == u0 { return true; }
+    let t = (x1 - x + t1 * (u1 - u0)) / (u - u0);
+    let p = part.get_at(t);
+    z.push((t, p.2));
+    p.0 == sx + t * u0 && p.1 == sy + t * v0
+  }) { return None; }
+  let ((t1, z1), (t2, z2)) = (z[0], z[1]);
+  let w0 = (z2 - z1) / (t2 - t1);
+  let sz = z1 - t1 * w0;
+  Some((sx, sy, sz))
+}
+
+fn solve_some(data: &[Particle], range: &RangeInclusive<i64>) -> Option<Point> {
+  range.clone().flat_map(|u| range.clone().filter_map(move |v|
+    solve(data, (u, v, 0)))).next()
+}
+
 pub fn run(content: &str) {
   let data = content.lines().map(Particle::parse).collect::<Vec<_>>();
   let range = 200_000_000_000_000..=400_000_000_000_000_i64;
   let res1 = (0..data.len()).map(|i| data[i].count_2d(&data[i+1..], &range))
     .sum::<usize>();
-  println!("{}", res1);
+  let init = solve_some(&data, &(-1000..=1000)).unwrap();
+  let res2 = init.0 + init.1 + init.2;
+  println!("{} {}", res1, res2);
 }
 
 #[cfg(test)]
